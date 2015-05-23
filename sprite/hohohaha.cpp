@@ -7,7 +7,7 @@
 using namespace std;
 const int SCREEN_WIDTH = 640;
 const int SCREEN_HEIGHT = 480;
-const int VELOCITY = 7;
+const int VELOCITY = 8;
 
 bool init();
 bool loadMedia();
@@ -62,12 +62,18 @@ public:
 		
 		return frames.at(i);
 	}
-
-	FrameSet* getNextFrameSet() {
+	void setNextFrameSet(FrameSet* nextFrameSet) {
+		this->nextFrameSet = nextFrameSet;
+	}
+	FrameSet& getNextFrameSet() {
+		printf("%s", nextFrameSet);
 		if (nextFrameSet != NULL){
-			return nextFrameSet;
+			return *nextFrameSet;
 		}
-		return this;
+		return *this;
+	}
+	void reset() {
+		i = 0;
 	}
 private:
 	int i;
@@ -94,41 +100,44 @@ SDL_Surface* fundoBranco = NULL;
 
 Mix_Chunk *wind = NULL;
 
-FrameSet parado;
-FrameSet caminhando;
-FrameSet iniciandoCaminhada(caminhando);
-FrameSet *atual;
+FrameSet *parado = new FrameSet();
+FrameSet *caminhando = new FrameSet();
+FrameSet *iniciandoCaminhada = new FrameSet();
+FrameSet *atual = parado;
 
 bool init() {
-	parado.addFrame(Frame(269, 8, 37, 49));
-	parado.addFrame(Frame(311, 8, 37, 49));
-	parado.addFrame(Frame(354, 8, 37, 49));
-	parado.addFrame(Frame(396, 8, 37, 49));
-	parado.addFrame(Frame(438, 8, 37, 49));
-	parado.addFrame(Frame(396, 8, 37, 49));
-	parado.addFrame(Frame(354, 8, 37, 49));
-	parado.addFrame(Frame(311, 8, 37, 49));
-	parado.addFrame(Frame(269, 8, 37, 49));
+	
+	parado->addFrame(Frame(269, 8, 37, 49));
+	parado->addFrame(Frame(311, 8, 37, 49));
+	parado->addFrame(Frame(354, 8, 37, 49));
+	parado->addFrame(Frame(396, 8, 37, 49));
+	parado->addFrame(Frame(438, 8, 37, 49));
+	parado->addFrame(Frame(396, 8, 37, 49));
+	parado->addFrame(Frame(354, 8, 37, 49));
+	parado->addFrame(Frame(311, 8, 37, 49));
+	parado->addFrame(Frame(269, 8, 37, 49));
 
-	caminhando.addFrame(Frame(230, 342, 34, 49));
-	caminhando.addFrame(Frame(270, 342, 42, 49));
-	caminhando.addFrame(Frame(315, 342, 48, 49));
-	caminhando.addFrame(Frame(365, 342, 50, 49));
-	caminhando.addFrame(Frame(422, 342, 42, 49));
-	caminhando.addFrame(Frame(468, 342, 32, 49));
-	caminhando.addFrame(Frame(144, 400, 32, 49));
-	caminhando.addFrame(Frame(182, 400, 37, 49));
-	caminhando.addFrame(Frame(226, 400, 42, 49));
-	caminhando.addFrame(Frame(276, 400, 44, 49));
-	caminhando.addFrame(Frame(330, 400, 44, 49));
-	caminhando.addFrame(Frame(382, 400, 40, 49));
-	caminhando.addFrame(Frame(431, 400, 34, 49));
-	caminhando.addFrame(Frame(470, 400, 31, 49));
+	
+	caminhando->addFrame(Frame(230, 342, 34, 49));
+	caminhando->addFrame(Frame(270, 342, 42, 49));
+	caminhando->addFrame(Frame(315, 342, 48, 49));
+	caminhando->addFrame(Frame(365, 342, 50, 49));
+	caminhando->addFrame(Frame(422, 342, 42, 49));
+	caminhando->addFrame(Frame(468, 342, 32, 49));
+	caminhando->addFrame(Frame(144, 400, 32, 49));
+	caminhando->addFrame(Frame(182, 400, 37, 49));
+	caminhando->addFrame(Frame(226, 400, 42, 49));
+	caminhando->addFrame(Frame(276, 400, 44, 49));
+	caminhando->addFrame(Frame(330, 400, 44, 49));
+	caminhando->addFrame(Frame(382, 400, 40, 49));
+	caminhando->addFrame(Frame(431, 400, 34, 49));
+	caminhando->addFrame(Frame(470, 400, 31, 49));
 
-	iniciandoCaminhada.addFrame(Frame(145, 342, 35, 49));
-	iniciandoCaminhada.addFrame(Frame(189, 342, 33, 49));
-
-	atual = &parado;
+	
+	iniciandoCaminhada->addFrame(Frame(145, 342, 35, 49));
+	iniciandoCaminhada->addFrame(Frame(189, 342, 33, 49));
+	iniciandoCaminhada->setNextFrameSet(caminhando);
+	atual = parado;
 
 	if (SDL_Init(SDL_INIT_VIDEO) < 0) {
 		printf("Erro ao inicializar o vídeo! %s", SDL_GetError());
@@ -201,7 +210,8 @@ int main(int argc, char* args[])
 						if (e.key.keysym.sym == SDLK_ESCAPE)
 							quit = true;
 						
-						atual = &iniciandoCaminhada;
+						if (atual == parado)
+							atual = iniciandoCaminhada;
 						
 						if (e.key.keysym.sym == SDLK_RIGHT)
 							bodyX = bodyX + VELOCITY;
@@ -209,17 +219,18 @@ int main(int argc, char* args[])
 							bodyX = bodyX - VELOCITY;
 
 						
-						Mix_PlayChannel(-1, wind, 0);
 						
 					} 
 					if (e.type == SDL_KEYUP) {
-						atual = &parado;
+						Mix_PlayChannel(-1, wind, 0);
+						atual->reset();
+						atual = parado;
 					}
 				}
 				
 
 				Frame frameAtual = atual->getFrameAtual();
-				atual = atual->getNextFrameSet();
+				atual = &(atual->getNextFrameSet());
 				SDL_Rect source;
 				source.x = frameAtual.getX();
 				source.y = frameAtual.getY();
@@ -234,7 +245,7 @@ int main(int argc, char* args[])
 				SDL_BlitSurface(megamanSprite, &source, mainSurface, &destiny);
 
 				SDL_UpdateWindowSurface(window);
-				SDL_Delay(100);
+				SDL_Delay(50);
 			}
 
 		}
