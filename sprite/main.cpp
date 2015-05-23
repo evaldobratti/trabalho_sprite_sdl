@@ -4,120 +4,10 @@
 #include <stdio.h>
 #include <SDL_mixer.h>
 #include <vector>
-using namespace std;
-const int SCREEN_WIDTH = 640;
-const int SCREEN_HEIGHT = 480;
-const int VELOCITY = 8;
+#include "sprite.cpp"
 
-bool init();
-bool loadMedia();
-void close();
-
-class Frame {
-public:
-	int getX(){
-		return this->x;
-	}
-	int getY() {
-		return this->y;
-	}
-	int getW() {
-		return this->w;
-	}
-	int getH() {
-		return this->h;
-	}
-	Frame(int x, int y, int w, int h){
-		this->x = x;
-		this->y = y;
-		this->w = w;
-		this->h = h;
-	}
-private:
-	int x, y, w, h;
-};
-
-
-class FrameSet {
-public:
-	FrameSet() {
-		i = 0;
-		nextFrameSet = NULL;
-	}
-	FrameSet(FrameSet *nextFrameSet) {
-		vector<Frame> temp;
-		this->frames = temp;
-		this->nextFrameSet = nextFrameSet;
-	}
-	vector<Frame> getFrames(){
-		return this->frames;
-	}
-	void addFrame(Frame frame) {
-		this->frames.push_back(frame);
-	}
-	Frame getFrameAtual() {
-		i += 1;
-		if (i >= this->frames.size())
-			i = 0;
-		
-		return frames.at(i);
-	}
-	void setNextFrameSet(FrameSet* nextFrameSet) {
-		this->nextFrameSet = nextFrameSet;
-	}
-	FrameSet& getNextFrameSet() {
-		printf("%s", nextFrameSet);
-		if (nextFrameSet != NULL){
-			return *nextFrameSet;
-		}
-		return *this;
-	}
-	void reset() {
-		i = 0;
-	}
-private:
-	int i;
-	vector<Frame> frames;
-	FrameSet *nextFrameSet;
-	Frame *frameAtual;
-
-	bool isUltimoFrame(int i) {
-		return i >= frames.size();
-	}
-};
-
-int bodyW = 35;
-int bodyH = 49;
-int bodyX = SCREEN_WIDTH / 2 - bodyH;
-int bodyY = SCREEN_HEIGHT / 2 - bodyW;
-
-SDL_Window* window = NULL;
-SDL_Surface* mainSurface = NULL;
-SDL_Surface* buffer = NULL;
-
-SDL_Surface* megamanSprite = NULL;
-SDL_Surface* fundoBranco = NULL;
-
-Mix_Chunk *wind = NULL;
-
-FrameSet *parado = new FrameSet();
-FrameSet *caminhando = new FrameSet();
-FrameSet *iniciandoCaminhada = new FrameSet();
-FrameSet *atual = parado;
-
-bool init() {
-	
-	parado->addFrame(Frame(269, 8, 37, 49));
-	parado->addFrame(Frame(311, 8, 37, 49));
-	parado->addFrame(Frame(354, 8, 37, 49));
-	parado->addFrame(Frame(396, 8, 37, 49));
-	parado->addFrame(Frame(438, 8, 37, 49));
-	parado->addFrame(Frame(396, 8, 37, 49));
-	parado->addFrame(Frame(354, 8, 37, 49));
-	parado->addFrame(Frame(311, 8, 37, 49));
-	parado->addFrame(Frame(269, 8, 37, 49));
-
-	
+FrameSet *loadFramesCaminhando() {
+	FrameSet* caminhando = new FrameSet();
 	caminhando->addFrame(Frame(230, 342, 34, 49));
 	caminhando->addFrame(Frame(270, 342, 42, 49));
 	caminhando->addFrame(Frame(315, 342, 48, 49));
@@ -133,9 +23,64 @@ bool init() {
 	caminhando->addFrame(Frame(431, 400, 34, 49));
 	caminhando->addFrame(Frame(470, 400, 31, 49));
 
-	
+	return caminhando;
+}
+
+FrameSet* loadFramesParado() {
+	FrameSet* parado = new FrameSet();
+	parado->addFrame(Frame(269, 8, 37, 49));
+	parado->addFrame(Frame(311, 8, 37, 49));
+	parado->addFrame(Frame(354, 8, 37, 49));
+	parado->addFrame(Frame(396, 8, 37, 49));
+	parado->addFrame(Frame(438, 8, 37, 49));
+	parado->addFrame(Frame(396, 8, 37, 49));
+	parado->addFrame(Frame(354, 8, 37, 49));
+	parado->addFrame(Frame(311, 8, 37, 49));
+	parado->addFrame(Frame(269, 8, 37, 49));
+
+	return parado;
+}
+
+FrameSet* loadFramesIniciandoCaminhada() {
+	FrameSet* iniciandoCaminhada = new FrameSet();
+
 	iniciandoCaminhada->addFrame(Frame(145, 342, 35, 49));
 	iniciandoCaminhada->addFrame(Frame(189, 342, 33, 49));
+
+	return iniciandoCaminhada;
+}
+
+using namespace std;
+const int SCREEN_WIDTH = 640;
+const int SCREEN_HEIGHT = 480;
+const int VELOCITY = 8;
+
+bool init();
+bool loadMedia();
+void close();
+
+int bodyW = 35;
+int bodyH = 49;
+int bodyX = SCREEN_WIDTH / 2 - bodyH;
+int bodyY = SCREEN_HEIGHT / 2 - bodyW;
+int soundTimeout = -1;
+
+SDL_Window* window = NULL;
+SDL_Surface* mainSurface = NULL;
+SDL_Surface* buffer = NULL;
+
+SDL_Surface* megamanSprite = NULL;
+SDL_Surface* fundoBranco = NULL;
+
+Mix_Chunk *wind = NULL;
+
+FrameSet *parado = loadFramesParado();
+FrameSet *caminhando = loadFramesCaminhando();
+FrameSet *iniciandoCaminhada = loadFramesIniciandoCaminhada();
+
+FrameSet *atual = parado;
+
+bool init() {
 	iniciandoCaminhada->setNextFrameSet(caminhando);
 	atual = parado;
 
@@ -207,6 +152,10 @@ int main(int argc, char* args[])
 						quit = true;
 					}
 					if (e.type == SDL_KEYDOWN) {
+						if (soundTimeout < 0) {
+							soundTimeout = 39;
+							Mix_PlayChannel(-1, wind, 0);
+						}
 						if (e.key.keysym.sym == SDLK_ESCAPE)
 							quit = true;
 						
@@ -222,13 +171,14 @@ int main(int argc, char* args[])
 						
 					} 
 					if (e.type == SDL_KEYUP) {
-						Mix_PlayChannel(-1, wind, 0);
 						atual->reset();
 						atual = parado;
 					}
 				}
 				
-
+				if (soundTimeout >= 0)
+					soundTimeout -= 1;
+				printf("%i\n", soundTimeout);
 				Frame frameAtual = atual->getFrameAtual();
 				atual = &(atual->getNextFrameSet());
 				SDL_Rect source;
