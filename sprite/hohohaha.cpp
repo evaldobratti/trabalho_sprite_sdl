@@ -3,7 +3,8 @@
 #include <SDL_main.h>
 #include <stdio.h>
 #include <SDL_mixer.h>
-
+#include <vector>
+using namespace std;
 const int SCREEN_WIDTH = 640;
 const int SCREEN_HEIGHT = 480;
 const int VELOCITY = 7;
@@ -12,24 +13,72 @@ bool init();
 bool loadMedia();
 void close();
 
+class Frame {
+public:
+	int getX(){
+		return this->x;
+	}
+	int getY() {
+		return this->y;
+	}
+	int getW() {
+		return this->w;
+	}
+	int getH() {
+		return this->h;
+	}
+	Frame(int x, int y, int w, int h){
+		this->x = x;
+		this->y = y;
+		this->w = w;
+		this->h = h;
+	}
+private:
+	int x, y, w, h;
+};
 
-int spriteParadoX[] = { 269, 311, 354, 396, 438, 396, 354, 311, 269 };
-int spriteParadoY[] = { 8,   8,   8,   8  , 8,   8,   8,   8,   8};
-int spriteParadoW[] = { 37 , 37 , 37,  37 , 37,  37,  37,  37,  37};
-int spriteParadoH[] = { 49 , 49 , 49,  49 , 49,  49,  49,  49,  49};
-int lenghtParado = sizeof(spriteParadoH) / sizeof(int);
 
-int spriteCaminhandoX[] = { 230, 270, 315, 365, 422, 468, 144, 182, 226, 276, 330, 382, 431, 470 };
-int spriteCaminhandoY[] = { 342, 342, 342, 342, 342, 342, 400, 400, 400, 400, 400, 400, 400, 400 };
-int spriteCaminhandoW[] = { 34,  42,  48,  50,  42,  32,  32,  37,  42,  44,  44,  40,  34,  31 };
-int spriteCaminhandoH[] = { 49,  49,  49,  49,  49,  49,  49,  49,  49,  49,  49,  49,  49,  49 };
-int lenghtCaminhando = sizeof(spriteCaminhandoH) / sizeof(int);
+class FrameSet {
+public:
+	FrameSet() {
+		i = 0;
+		nextFrameSet = NULL;
+	}
+	FrameSet(FrameSet *nextFrameSet) {
+		vector<Frame> temp;
+		this->frames = temp;
+		this->nextFrameSet = nextFrameSet;
+	}
+	vector<Frame> getFrames(){
+		return this->frames;
+	}
+	void addFrame(Frame frame) {
+		this->frames.push_back(frame);
+	}
+	Frame getFrameAtual() {
+		i += 1;
+		if (i >= this->frames.size())
+			i = 0;
+		
+		return frames.at(i);
+	}
 
-int *currentSpriteX = spriteParadoX;
-int *currentSpriteY = spriteParadoY;
-int *currentSpriteW = spriteParadoW;
-int *currentSpriteH = spriteParadoH;
-int currentLength = lenghtParado;
+	FrameSet* getNextFrameSet() {
+		if (nextFrameSet != NULL){
+			return nextFrameSet;
+		}
+		return this;
+	}
+private:
+	int i;
+	vector<Frame> frames;
+	FrameSet *nextFrameSet;
+	Frame *frameAtual;
+
+	bool isUltimoFrame(int i) {
+		return i >= frames.size();
+	}
+};
 
 int bodyW = 35;
 int bodyH = 49;
@@ -45,7 +94,42 @@ SDL_Surface* fundoBranco = NULL;
 
 Mix_Chunk *wind = NULL;
 
+FrameSet parado;
+FrameSet caminhando;
+FrameSet iniciandoCaminhada(caminhando);
+FrameSet *atual;
+
 bool init() {
+	parado.addFrame(Frame(269, 8, 37, 49));
+	parado.addFrame(Frame(311, 8, 37, 49));
+	parado.addFrame(Frame(354, 8, 37, 49));
+	parado.addFrame(Frame(396, 8, 37, 49));
+	parado.addFrame(Frame(438, 8, 37, 49));
+	parado.addFrame(Frame(396, 8, 37, 49));
+	parado.addFrame(Frame(354, 8, 37, 49));
+	parado.addFrame(Frame(311, 8, 37, 49));
+	parado.addFrame(Frame(269, 8, 37, 49));
+
+	caminhando.addFrame(Frame(230, 342, 34, 49));
+	caminhando.addFrame(Frame(270, 342, 42, 49));
+	caminhando.addFrame(Frame(315, 342, 48, 49));
+	caminhando.addFrame(Frame(365, 342, 50, 49));
+	caminhando.addFrame(Frame(422, 342, 42, 49));
+	caminhando.addFrame(Frame(468, 342, 32, 49));
+	caminhando.addFrame(Frame(144, 400, 32, 49));
+	caminhando.addFrame(Frame(182, 400, 37, 49));
+	caminhando.addFrame(Frame(226, 400, 42, 49));
+	caminhando.addFrame(Frame(276, 400, 44, 49));
+	caminhando.addFrame(Frame(330, 400, 44, 49));
+	caminhando.addFrame(Frame(382, 400, 40, 49));
+	caminhando.addFrame(Frame(431, 400, 34, 49));
+	caminhando.addFrame(Frame(470, 400, 31, 49));
+
+	iniciandoCaminhada.addFrame(Frame(145, 342, 35, 49));
+	iniciandoCaminhada.addFrame(Frame(189, 342, 33, 49));
+
+	atual = &parado;
+
 	if (SDL_Init(SDL_INIT_VIDEO) < 0) {
 		printf("Erro ao inicializar o vídeo! %s", SDL_GetError());
 		return false;
@@ -74,6 +158,7 @@ bool loadMedia() {
 	SDL_Surface* spriteSurface = IMG_Load("C:\\pos-jogos\\sprite\\sprite\\sprite\\x6shadow.gif");
 	megamanSprite = SDL_ConvertSurfaceFormat(spriteSurface, SDL_PIXELFORMAT_RGBA8888, 0);
 	SDL_FreeSurface(spriteSurface);
+
 
 	spriteSurface = IMG_Load("C:\\pos-jogos\\sprite\\sprite\\sprite\\branco.gif");
 	fundoBranco = SDL_ConvertSurfaceFormat(spriteSurface, SDL_PIXELFORMAT_RGBA8888, 0);
@@ -116,11 +201,7 @@ int main(int argc, char* args[])
 						if (e.key.keysym.sym == SDLK_ESCAPE)
 							quit = true;
 						
-						currentSpriteX = spriteCaminhandoX;
-						currentSpriteY = spriteCaminhandoY;
-						currentSpriteW = spriteCaminhandoW;
-						currentSpriteH = spriteCaminhandoH;
-						currentLength = lenghtCaminhando;
+						atual = &iniciandoCaminhada;
 						
 						if (e.key.keysym.sym == SDLK_RIGHT)
 							bodyX = bodyX + VELOCITY;
@@ -132,29 +213,22 @@ int main(int argc, char* args[])
 						
 					} 
 					if (e.type == SDL_KEYUP) {
-						currentSpriteX = spriteParadoX;
-						currentSpriteY = spriteParadoY;
-						currentSpriteW = spriteParadoW;
-						currentSpriteH = spriteParadoH;
-						currentLength = lenghtParado;
-						currentSprite = 0;
+						atual = &parado;
 					}
 				}
 				
 
+				Frame frameAtual = atual->getFrameAtual();
+				atual = atual->getNextFrameSet();
 				SDL_Rect source;
-				source.x = currentSpriteX[currentSprite];
-				source.y = currentSpriteY[currentSprite];
-				source.w = currentSpriteW[currentSprite];
-				source.h = currentSpriteH[currentSprite];
+				source.x = frameAtual.getX();
+				source.y = frameAtual.getY();
+				source.w = frameAtual.getW();
+				source.h = frameAtual.getH();
 
 				SDL_Rect destiny;
 				destiny.x = bodyX + bodyH - source.h;
 				destiny.y = bodyY + (bodyW - source.w) / 2;
-
-				currentSprite = currentSprite + 1;
-				if (currentSprite >= currentLength)
-					currentSprite = 0;
 
 				SDL_BlitSurface(fundoBranco, NULL, mainSurface, NULL);
 				SDL_BlitSurface(megamanSprite, &source, mainSurface, &destiny);
