@@ -69,7 +69,6 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="main.cpp" />
-    <ClCompile Include="sprite.cpp" />
   </ItemGroup>
   <ItemGroup>
     <Image Include="branco.gif" />
